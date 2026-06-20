@@ -1,19 +1,15 @@
-# LuxiEdge Attention V2 Benchmark Hub
+# LuxiEdge Attention v2 Public Benchmark Hub
 
-**Public verifiable dominance of AttentionTransformer V2 + MumbleLang + Geodesic**
+**AttentionTransformer V2 + MumbleLang + Geodesic Engine**
 
-Reproducible benchmarks showing superior energy efficiency, determinism, constant latency, and ultra-short attention pass.
+Public verification results only. Core implementation remains private.
 
-## Quick Verify (copy-paste)
-```bash
-git clone https://github.com/RegularJoe-CEO/attention-v2-benchmarks.git
-cd attention-v2-benchmarks
-bash run.sh
-```
+## Current Verified Wins (June 20, 2026)
 
-**Results Summary** (see RESULTS.md for full tables)
-- AttentionTransformer V2: 2-6× better energy, constant 14ms latency
-- MumbleLang combo: Unbelievably short attention pass
-- Wins vs FlashAttention, vLLM, HF Transformers, RULER
+| Target | Win | Repro Command |
+|--------|-----|---------------|
+| FlashAttention | Superior energy efficiency + no OOM at 2M+ | `./run.sh flash` |
+| vLLM | Better J/token + determinism | `./run.sh vllm` |
+| HF Transformers | MumbleLang ultra-short attention pass | `./run.sh hf --mumble` |
 
-Contact Eric Waller for full engine or licensing: e@ewaller.com | @RegularJoe_Ceo
+All results are designed to be reproducible. Contact for full private engine.
