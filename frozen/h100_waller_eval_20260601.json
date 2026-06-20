@@ -1,0 +1,28 @@
+{
+  "snapshot": "2026-06-01",
+  "device": "NVIDIA H100 NVL",
+  "harness": "cuda_bench waller-eval Phase-0",
+  "config": {
+    "iters": 500,
+    "seq": 1024,
+    "hidden": 1024,
+    "heads": 16,
+    "head_dim": 64
+  },
+  "phase0_baseline": {
+    "median_ms": 13.084,
+    "mean_ms": 14.112,
+    "throughput_iters_per_s": 70.86,
+    "approx_gflops": 304
+  },
+  "phase2_register_kernel": {
+    "median_ms": 4.164,
+    "mean_ms": 4.178,
+    "throughput_iters_per_s": 239.3,
+    "approx_gflops": 1028
+  },
+  "geodesic_full_layer_ms": 6.8,
+  "audit_receipt": "0ae659948eabc3fa1212b84d9a2006c707c28ba4209ce28410df676d38d37ada",
+  "max_diff_vs_cpu": "0.00e0",
+  "notes": "waller-eval ~14ms = Phase-0 mean cluster; TRADE path ~6.8ms full layer"
+}

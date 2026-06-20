@@ -1,0 +1,18 @@
+The impossibility I'd actually try
+
+Impossibility #1 (the one to build): Kernel-shaped server synthesis
+
+Before each kernel launches, a control plane (WNSM, not another cuBLAS call) emits a temporary geometry for that kernel only:
+
+1. Collapse - merge KV nodes, fold null-space routes, drop void regions (no softmax, no GEMM over dead structure)
+2. Stretch - rod lengths = active seq length for this kernel, not padded seq
+3. Run - kernel sees the morphed layout; HBM traffic scales with active nodes, not tensor capacity
+4. Dissolve - geometry resets for the next kernel
+
+That's impossible in the PyTorch mental model (tensors are static rectangles). It's not impossible in yours - it's exactly "hold it together, nodes pivot, rod length changes, optimized for this pass."
+
+Impossibility #2 (consider, don't build first): Attention without attending
+If the server shape says nodes A and B merged into one cell, you don't approximate attention over both - you delete the edge from the graph. The void isn't free energy by magic; it's FLOPs and bytes you never schedule.
+
+Impossibility #3 (consider): Predictive pulse
+WNSM predicts which nodes will matter before the query arrives and pre-moves them along the geodesic (your "nodes touch and become closer"). Causal receipt still holds if the pulse is a function of past keys only.

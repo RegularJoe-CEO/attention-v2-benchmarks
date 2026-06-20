@@ -1,0 +1,26 @@
+{
+  "snapshot": "2026-06-01",
+  "device": "NVIDIA H100 NVL",
+  "driver": "580.126.09",
+  "cuda": "12.4",
+  "profile": "gpt2",
+  "seq": 1024,
+  "hidden": 768,
+  "heads": 12,
+  "mlp": 3072,
+  "iters": 30,
+  "method": "benchmark_joules.py — median_power_W * median_ms / seq",
+  "geodesic_layer": {
+    "median_ms": 6.8,
+    "power_w": 118.9,
+    "joules_per_token": 7.9e-4
+  },
+  "pytorch_full_layer": {
+    "median_ms": 22.1,
+    "power_w": 119.4,
+    "joules_per_token": 2.55e-3
+  },
+  "geodesic_vs_pytorch_joules_ratio": 3.23,
+  "cuda_quant_bench_12_layer_ms": 69.5,
+  "notes": "Re-run: bash scripts/benchmark_joules_pod.sh --profile gpt2"
+}

@@ -1,0 +1,25 @@
+{
+  "snapshot": "2026-06-20",
+  "device": "Apple M-series (MacBookPro18,3)",
+  "example": "production_demo",
+  "config": {
+    "hidden": 64,
+    "heads": 4,
+    "layers": 3,
+    "seq": 8
+  },
+  "normal_receipt": "e1980a6fa77252dcab86e48aa7aa8ab2a6d3c5639789d0917e7efa1a7bb37628",
+  "wnsm_receipt": "e1980a6fa77252dcab86e48aa7aa8ab2a6d3c5639789d0917e7efa1a7bb37628",
+  "max_output_diff": "0.00e0",
+  "long_context_bench": {
+    "seq_8192_waller_ms": 1597.5,
+    "seq_8192_standard_ms": 1722.0,
+    "memory_reduction_x": 128.0
+  },
+  "energy_sweep_seq_131072": {
+    "std_attn_joules": 33.0,
+    "waller_attn_joules": 0.0161,
+    "energy_reduction_x": 2048.0
+  },
+  "notes": "cargo run --release --example production_demo"
+}

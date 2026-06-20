@@ -1,0 +1,47 @@
+name: Verify Benchmark Artifacts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  public-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Make run_bench.sh executable
+        run: chmod +x run_bench.sh
+
+      - name: Run public verification harness
+        run: ./run_bench.sh
+
+      - name: Energy model only
+        run: ./run_bench.sh --energy-only
+
+      - name: MumbleLang short-pass only
+        run: ./run_bench.sh --mumble
+
+      - name: Verify frozen checksums
+        run: ./run_bench.sh --verify-checksums
+
+      - name: Confirm RESULTS_2026.md contains headline tables
+        run: |
+          grep -q "FlashAttention-2" RESULTS_2026.md
+          grep -q "vLLM" RESULTS_2026.md
+          grep -q "RULER" RESULTS_2026.md
+          grep -q "nanoGPT" RESULTS_2026.md
+          grep -q "0ae659948eabc3fa" RESULTS_2026.md
+          grep -q "e1980a6fa77252dc" RESULTS_2026.md
+          echo "RESULTS_2026.md structure OK"
