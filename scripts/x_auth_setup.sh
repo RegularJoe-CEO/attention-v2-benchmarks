@@ -50,11 +50,16 @@ if ! try_browser_auth; then
   echo "NOT the X Developer Portal (developer.x.com) — ignore that entirely."
   echo "You need your BROWSER's built-in inspector while logged into x.com."
   echo
-  echo "── Easiest path: try auto-extract again in Terminal.app ──"
-  echo "  1. Open Chrome and log into https://x.com as @RegularJoe_Ceo"
-  echo "  2. In Terminal.app (not Cursor), run:  bird whoami"
-  echo "  3. If macOS asks for Keychain access → click Allow"
-  echo "  4. If that prints your @handle, re-run this script and press 'y' to skip manual entry"
+  echo "── Fix Chrome keychain timeout (your error) ──"
+  echo "  System Settings → Privacy & Security → Full Disk Access"
+  echo "  Enable: Terminal.app  (and iTerm if you use it)"
+  echo "  Quit Terminal completely, reopen, then:  bird whoami"
+  echo
+  echo "── Or skip keychain — paste cookies manually (60 seconds) ──"
+  echo "  1. Chrome → https://x.com (logged in as @RegularJoe_Ceo)"
+  echo "  2. Cmd+Option+I → Network tab → Cmd+R reload"
+  echo "  3. Click first 'x.com' request → Headers → Request Headers → cookie:"
+  echo "  4. Copy auth_token=XXXX and ct0=YYYY from that line (paste below)"
   echo
   echo "── Manual fallback (Chrome on Mac) ──"
   echo "  1. In Chrome, go to https://x.com (logged in)"
