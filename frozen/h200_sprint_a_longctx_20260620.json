@@ -1,0 +1,45 @@
+{
+  "snapshot": "2026-06-20",
+  "device": "NVIDIA H200",
+  "benchmark": "sprint_a_longctx",
+  "config": {
+    "seq": 16384,
+    "hidden": 4096,
+    "heads": 32
+  },
+  "fixtures": [
+    {
+      "fixture": "clustered",
+      "edge_deletion": 0.999741,
+      "pytorch_math_ms": 63.03,
+      "pytorch_math_joules": 37.66,
+      "trade_morph_ms": 0.915,
+      "trade_morph_joules": 0.114,
+      "joules_ratio_morph_over_math": 329.1,
+      "speed_ratio_morph_over_math": 68.9
+    },
+    {
+      "fixture": "rag_chunks",
+      "edge_deletion": 1.0,
+      "pytorch_math_ms": 63.02,
+      "pytorch_math_joules": 36.03,
+      "trade_morph_ms": 0.652,
+      "trade_morph_joules": 0.082,
+      "joules_ratio_morph_over_math": 437.8,
+      "speed_ratio_morph_over_math": 96.6
+    },
+    {
+      "fixture": "stable_prefix",
+      "edge_deletion": 0.999866,
+      "pytorch_math_ms": 62.95,
+      "pytorch_math_joules": 38.25,
+      "trade_morph_ms": 0.840,
+      "trade_morph_joules": 0.107,
+      "joules_ratio_morph_over_math": 358.8,
+      "speed_ratio_morph_over_math": 75.0
+    }
+  ],
+  "winners": 3,
+  "safe_to_publish": true,
+  "scope": "Attn-only, v7 native + kernel morph void mesh. PyTorch baseline: SDPA math (Flash off)."
+}

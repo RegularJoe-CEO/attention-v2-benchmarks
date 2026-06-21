@@ -1,7 +1,7 @@
 # RESULTS 2026 — AttentionTransformer V2 Benchmark Report
 
-**Snapshot date:** 2026-06-20  
-**Primary hardware:** NVIDIA H100 NVL (RunPod), Apple M-series (CPU cross-check)  
+**Snapshot date:** 2026-06-20 (updated with H200 morph long-context runs)  
+**Primary hardware:** NVIDIA H100 NVL + **H200** (RunPod), Apple M-series (CPU cross-check)
 **Engine version:** AttentionTransformer V2 (proprietary — contact for source)  
 **Public verifier:** `./run_bench.sh` in this repo
 
@@ -13,14 +13,19 @@ All tables below cite **measured** or **model-derived** numbers with explicit me
 
 | Category | Winner on documented axis | Ratio / value |
 |----------|--------------------------|---------------|
-| Full-layer J/token (GPT-2 shape) | **Geodesic TRADE** | **3.2×** vs PyTorch unfused fp16 |
+| **Kernel morph attn (compressible KV)** | **TRADE void mesh** | **16.8× joules, 9.8× speed** vs Flash @ seq=16k `rag_tokenized` (H200) |
+| **Longctx morph attn (Sprint A)** | **TRADE void mesh** | **329–438× joules** vs PyTorch SDPA-math @ seq=16k (H200) |
+| Full-layer J/token (GPT-2 shape) | **Geodesic TRADE** | **3.2×** vs PyTorch unfused fp16 (H100 frozen) |
+| Full-layer morph-auto @ 16k RAG | **TRADE P3+Flash+morph** | **2.06× joules** vs morph-off same stack (H200) |
 | AUDIT determinism | **AttentionTransformer V2** | `max_diff 0.00e0`, identical receipts CPU↔CUDA |
 | Long-context memory | **Waller O(N) streaming** | **341×** @ 131,072 tokens |
-| Attention-stage HBM energy | **Waller vs naive scores** | **2048×** @ 131,072 tokens |
+| Attention-stage HBM energy | **Waller vs naive scores** | **2048×** @ 131,072 tokens (model; Flash also streams) |
 | Raw attn kernel @ fp16 short seq | FlashAttention-2 / SDPA | Waller f32 register ~**1.0–1.5× slower** (documented) |
 | MumbleLang effective seq | **MBL/1.0 short-pass** | **1.7–3.3×** token reduction → up to **~11×** attn energy on verbose prompts |
 | vLLM serving throughput | vLLM (PagedAttention) | Higher tok/s at batch>1 — **not** our claim axis |
 | RULER long recall | Model-dependent | We claim **memory/determinism stability**, not SOTA RULER score |
+
+**Scope note:** Morph/CGA wins require **compressible KV geometry** (clustered keys, RAG chunks, tokenized tiles). They are **not** claimed on arbitrary weights @ seq=1024 — see §11.
 
 ---
 
@@ -29,7 +34,9 @@ All tables below cite **measured** or **model-derived** numbers with explicit me
 **Method:** `benchmarks/benchmark_joules.py` — median GPU power (pynvml) × median kernel time ÷ seq_len.  
 **Shape:** GPT-2 prefill — `seq=1024, hidden=768, heads=12, mlp=3072`, 1 geodesic layer.  
 **Power source:** `nvidia-smi` / pynvml median during timed runs (not TDP nameplate).  
-**Snapshot:** H100 NVL, driver 580.x, CUDA 12.4, 2026-06-01 (re-validate after geodesic QKV stride fix).
+**Snapshot:** H100 NVL, driver 580.x, CUDA 12.4, 2026-06-01 (frozen in `frozen/h100_gpt2_joules_20260601.json`).
+
+**Config clarity:** The headline **6.8 ms** full-layer figure in §3 is **H100** with `hidden=1024, heads=16` (locked TRADE path). GPT-2 shape on **H200** with production `pod_env` (P3 + Flash bridge + morph-auto) measured **~53 ms** / **6.07 mJ/token** — see `frozen/h200_gpt2_trade_20260620.json`. Use the shape that matches your deployment when comparing.
 
 | Stack | Median latency | Power (W) | J/token (layer) | vs TRADE |
 |-------|---------------:|------------:|----------------:|---------:|
@@ -288,6 +295,68 @@ Full-layer morph @ 8192: **1.6×** speedup (v7 + void vs v7 alone) — see `benc
 
 ---
 
+## 11. Kernel Morph + CGA — Long-Context Headlines (H200, 2026-06-20)
+
+**This is the strongest measured axis in the June sprint.** Morph void mesh deletes redundant KV edges when geometry compresses; CGA/contact lattice is the CPU oracle; production path is `LUXI_KERNEL_MORPH=auto` with v7 or Flash baselines.
+
+### 11a. `rag_tokenized` @ seq=16,384 (Llama-scale 4096/32)
+
+**Method:** `benchmark_joules.py` longctx + `cuda_longctx_attn_bench`; pynvml power; fixture `rag_tokenized`.  
+**Frozen:** `frozen/h200_morph_rag_tokenized_20260620.json`
+
+| Path | Median (attn) | Joules (pass) | vs Flash |
+|------|-------------:|--------------:|---------:|
+| PyTorch SDPA Flash fp16 | **6.41 ms** | **1.38 J** | 1.00× |
+| **TRADE kernel morph (void mesh)** | **0.65 ms** | **0.082 J** | **16.8× less J, 9.8× faster** |
+| TRADE Waller register (AUDIT-style) | 1489 ms | 463 J | not production default |
+
+**Production full layer** (P3 + Flash + morph-auto, same fixture):
+
+| Config | Median | Joules (run) | Power (W) |
+|--------|-------:|-------------:|----------:|
+| morph-off | 2760 ms | 765 J | 277 |
+| **morph-auto** | **1352 ms** | **372 J** | 275 |
+| **Ratio** | **2.04× faster** | **2.06× less energy** | — |
+
+### 11b. Sprint A — three longctx fixtures (attn-only)
+
+**Frozen:** `frozen/h200_sprint_a_longctx_20260620.json`  
+**Config:** seq=16,384, hidden=4096, heads=32; TRADE morph vs PyTorch SDPA **math** (Flash off).
+
+| Fixture | Morph J / Math J | Morph speed / Math |
+|---------|-----------------:|-------------------:|
+| clustered | **329×** | **69×** |
+| rag_chunks | **438×** | **97×** |
+| stable_prefix | **359×** | **75×** |
+
+### 11c. Llama 8B full-layer wedge @ seq=8,192
+
+From H200 `benchmark_joules` run (Llama dims 4096/32/14336):
+
+| Wedge | Result |
+|-------|--------|
+| Full layer v7 no-morph → +morph | **1.42×** less energy (950 ms → 668 ms) |
+| Mesh void attn-only @ h=64 fixture | **5.2×** vs Waller register (0.73 ms → 0.14 ms) |
+
+### 11d. When morph does **not** win (honest)
+
+| Config | Result | Why |
+|--------|--------|-----|
+| GPT-2 clustered @ seq=1024 | morph ~**0.97×** speed | Edge deletion too low — stays on Flash/v7 |
+| NSCB/GNCF freight (experimental) | ~+10–20% stack overhead | Freight not yet byte-positive — lives in `attention-transformer-freight` repo |
+
+**Reproduce (licensed engine on H200):**
+
+```bash
+cd /workspace/attention-transformer-v2   # or licensed clone
+source scripts/pod_env.sh
+bash scripts/sprint_cga_pod.sh              # rag_tokenized 16k headline
+bash scripts/sprint_a_pod.sh              # three-fixture Sprint A
+python3 benchmarks/benchmark_joules.py --profile llama8b --seq 8192 --attn v7
+```
+
+---
+
 ## Reproduce Yourself — Platform Matrix
 
 ### Mac (CPU — no GPU required for receipts)
@@ -340,6 +409,9 @@ Frozen snapshots in `frozen/` match this report. Verify:
 |------|---------|
 | `frozen/h100_gpt2_joules_20260601.json` | see `frozen/SHA256SUMS` |
 | `frozen/h100_waller_eval_20260601.json` | see `frozen/SHA256SUMS` |
+| `frozen/h200_morph_rag_tokenized_20260620.json` | see `frozen/SHA256SUMS` |
+| `frozen/h200_sprint_a_longctx_20260620.json` | see `frozen/SHA256SUMS` |
+| `frozen/h200_gpt2_trade_20260620.json` | see `frozen/SHA256SUMS` |
 | `frozen/cpu_receipts_20260620.json` | see `frozen/SHA256SUMS` |
 
 ---

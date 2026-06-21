@@ -54,6 +54,16 @@ ENERGY_131K_STD="33.0"
 ENERGY_131K_WALLER="0.0161"
 ENERGY_131K_RATIO="2048"
 
+# H200 morph longctx (2026-06-20 frozen snapshots)
+H200_MORPH_JOULES_RATIO_MIN="16.0"
+H200_MORPH_JOULES_RATIO_MAX="17.5"
+H200_MORPH_SPEED_RATIO_MIN="9.0"
+H200_MORPH_SPEED_RATIO_MAX="10.5"
+H200_FULL_LAYER_JOULES_RATIO_MIN="1.9"
+H200_FULL_LAYER_JOULES_RATIO_MAX="2.2"
+H200_SPRINT_A_JOULES_RATIO_MIN="320"
+H200_SPRINT_A_JOULES_RATIO_MAX="450"
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 need_cmd() {
@@ -263,7 +273,40 @@ PY
   echo
 }
 
-# ── 6. Frozen artifact checksums ─────────────────────────────────────────────
+# ── 6. H200 morph frozen JSON constants ──────────────────────────────────────
+
+verify_h200_morph() {
+  echo "── H200 morph longctx frozen constants ──"
+  need_cmd python3 || return 0
+
+  ROOT="${ROOT}" python3 - <<'PY' || { fail "H200 morph frozen JSON"; return 1; }
+import json
+import os
+from pathlib import Path
+
+root = Path(os.environ["ROOT"])
+morph = json.loads((root / "frozen/h200_morph_rag_tokenized_20260620.json").read_text())
+sprint = json.loads((root / "frozen/h200_sprint_a_longctx_20260620.json").read_text())
+
+jr = morph["morph_vs_flash"]["joules_ratio"]
+sr = morph["morph_vs_flash"]["speed_ratio"]
+fl = morph["production_full_layer_p3_flash"]["joules_ratio_off_over_auto"]
+assert 16.0 <= jr <= 17.5, f"morph joules ratio {jr}"
+assert 9.0 <= sr <= 10.5, f"morph speed ratio {sr}"
+assert 1.9 <= fl <= 2.2, f"full layer joules ratio {fl}"
+print(f"OK   rag_tokenized: joules={jr:.2f}x  speed={sr:.2f}x  full_layer={fl:.2f}x")
+
+ratios = [f["joules_ratio_morph_over_math"] for f in sprint["fixtures"]]
+assert all(320 <= r <= 450 for r in ratios), f"Sprint A ratios out of band: {ratios}"
+print(f"OK   Sprint A joules ratios: {', '.join(f'{r:.0f}x' for r in ratios)}")
+assert sprint["safe_to_publish"] is True
+assert morph["morph_vs_flash"]["two_of_three_pass"] is True
+PY
+  pass "H200 morph frozen JSON matches published headline bands"
+  echo
+}
+
+# ── 7. Frozen artifact checksums ─────────────────────────────────────────────
 
 verify_checksums() {
   echo "── Frozen artifact integrity ──"
@@ -278,6 +321,9 @@ verify_checksums() {
     warn "frozen/SHA256SUMS not found — generate after adding frozen/*.json"
     info "Expected files: frozen/h100_gpt2_joules_20260601.json"
     info "                  frozen/h100_waller_eval_20260601.json"
+    info "                  frozen/h200_morph_rag_tokenized_20260620.json"
+    info "                  frozen/h200_sprint_a_longctx_20260620.json"
+    info "                  frozen/h200_gpt2_trade_20260620.json"
     info "                  frozen/cpu_receipts_20260620.json"
   fi
 
@@ -294,7 +340,7 @@ verify_checksums() {
   echo
 }
 
-# ── 7. Optional live MumbleLang repo check ───────────────────────────────────
+# ── 8. Optional live MumbleLang repo check ───────────────────────────────────
 
 verify_mumble_repo() {
   echo "── Optional: MumbleLang public repo ──"
@@ -330,6 +376,7 @@ case "$MODE" in
     verify_energy_model
     verify_joules_ratio
     verify_waller_eval
+    verify_h200_morph
     verify_mumble_short_pass
     verify_checksums
     verify_mumble_repo
@@ -348,7 +395,7 @@ echo " Summary: ${PASS} passed, ${FAIL} failed, ${WARN} warnings"
 if [[ $FAIL -eq 0 ]]; then
   echo -e " ${GRN}PUBLIC VERIFICATION: PASS${NC}"
   echo
-  echo " For live H100/Mac numbers, contact luxiedge.com for engine access."
+  echo " For live H100/H200/Mac numbers, contact luxiedge.com for engine access."
   echo " Full tables: RESULTS_2026.md"
   exit 0
 else

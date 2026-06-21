@@ -1,0 +1,40 @@
+{
+  "snapshot": "2026-06-20",
+  "device": "NVIDIA H200",
+  "profile": "gpt2",
+  "seq": 1024,
+  "hidden": 768,
+  "heads": 12,
+  "mlp": 3072,
+  "paths": {
+    "p3_flash_morph_auto_full_layer": {
+      "harness": "cuda_layer_bench",
+      "median_ms": 53.4,
+      "env": "LUXI_TRADE_ENERGY=1 LUXI_GEODESIC_P3=1 LUXI_TRADE_ATTN=flash LUXI_KERNEL_MORPH=auto",
+      "note": "Production pod_env default — Flash bridge + FP16 MLP"
+    },
+    "v7_clustered_full_layer": {
+      "harness": "cuda_gpt2_morph_bench",
+      "no_morph_ms": 7.19,
+      "morph_ms": 7.45,
+      "env": "LUXI_TRADE_ATTN=v7 LUXI_FLASH_BRIDGE=0 clustered KV fixture",
+      "note": "Morph ~neutral @ seq=1024 on this fixture; wins at long seq + compressible KV"
+    },
+    "quant_stack_12_layer": {
+      "harness": "cuda_quant_bench",
+      "layers": 12,
+      "hidden": 1024,
+      "total_ms": 143.3,
+      "ms_per_layer_amortized": 12.1
+    },
+    "benchmark_joules_p3_flash": {
+      "joules_per_token": 0.00607,
+      "power_w": 117.2,
+      "median_ms": 53.1
+    }
+  },
+  "h100_reference_geodesic_6p8ms": {
+    "note": "H100 locked snapshot — different shape: hidden=1024 heads=16, not GPT-2 768",
+    "see": "frozen/h100_gpt2_joules_20260601.json"
+  }
+}

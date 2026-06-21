@@ -1,0 +1,46 @@
+{
+  "snapshot": "2026-06-20",
+  "device": "NVIDIA H200",
+  "benchmark": "cuda_longctx_attn_bench + benchmark_joules.py",
+  "fixture": "rag_tokenized",
+  "config": {
+    "seq": 16384,
+    "hidden": 4096,
+    "heads": 32,
+    "head_dim": 128,
+    "mlp": 14336
+  },
+  "method": "pynvml median power × median wall time; attn-only unless noted",
+  "sdpa_flash_attn": {
+    "median_ms": 6.407,
+    "joules_per_pass": 1.3774
+  },
+  "trade_morph_attn": {
+    "median_ms": 0.651,
+    "joules_per_pass": 0.0821,
+    "mesh_hits": 14,
+    "edge_deletion": 1.0
+  },
+  "morph_vs_flash": {
+    "joules_ratio": 16.78,
+    "speed_ratio": 9.84,
+    "two_of_three_pass": true
+  },
+  "trade_waller_register_attn": {
+    "median_ms": 1489.0,
+    "joules_per_pass": 462.8,
+    "note": "AUDIT-style path — not production TRADE default"
+  },
+  "production_full_layer_p3_flash": {
+    "morph_off_ms": 2760.1,
+    "morph_off_joules": 764.8,
+    "morph_auto_ms": 1351.7,
+    "morph_auto_joules": 372.0,
+    "joules_ratio_off_over_auto": 2.06,
+    "speed_ratio_off_over_auto": 2.04,
+    "power_w_off": 277.1,
+    "power_w_auto": 275.2
+  },
+  "reproduce": "LUXI_KERNEL_MORPH=auto FIXTURE=rag_tokenized bash scripts/sprint_cga_pod.sh (licensed engine)",
+  "scope": "Requires compressible KV geometry (rag_tokenized / high edge deletion). Not a universal short-seq claim."
+}

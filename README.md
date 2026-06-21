@@ -15,17 +15,18 @@ Independent verification artifacts for energy efficiency, deterministic receipts
 
 ## Where This Stack Wins (Verified, Conservative)
 
-This is not a claim to beat every framework on every metric. Documented, reproducible wins concentrate on four axes:
+This is not a claim to beat every framework on every metric. Documented, reproducible wins concentrate on five axes — **strongest first**:
 
 | Axis | Demonstrated advantage | Evidence |
 |------|------------------------|----------|
-| **Energy (J/token)** | Geodesic fused layer uses less measured GPU energy than unfused PyTorch full-layer baselines at GPT-2 shapes | [RESULTS_2026.md](RESULTS_2026.md) §2, H100 `benchmark_joules.py` |
-| **Constant AUDIT latency** | Waller-eval reference harness holds **~13–14 ms** median @ seq=1024 with tight run-to-run jitter | [RESULTS_2026.md](RESULTS_2026.md) §3, H100 Phase-0 snapshot |
+| **Kernel morph + CGA (compressible KV)** | **16.8× less joules**, **9.8× faster** vs Flash attn @ seq=16k `rag_tokenized` (H200); full layer **2.06×** morph-auto vs morph-off | [RESULTS_2026.md](RESULTS_2026.md) §11, `frozen/h200_morph_rag_tokenized_20260620.json` |
+| **Sprint A longctx (attn-only)** | **329–438× less joules** vs PyTorch SDPA-math on three compressible fixtures @ seq=16k | [RESULTS_2026.md](RESULTS_2026.md) §11b, `frozen/h200_sprint_a_longctx_20260620.json` |
+| **Energy (J/token, general KV)** | Geodesic fused layer **3.2×** less measured GPU energy than unfused PyTorch full-layer @ GPT-2 shapes (H100) | [RESULTS_2026.md](RESULTS_2026.md) §2 |
 | **Determinism** | Bit-exact SHA-256 receipts across CPU/CUDA AUDIT paths; `max_diff 0.00e0` | [RESULTS_2026.md](RESULTS_2026.md) §4 |
-| **Long-context stability** | O(N) Waller memory — **341×** less score-matrix footprint @ 131k tokens; no materialized N×N OOM cliff | [RESULTS_2026.md](RESULTS_2026.md) §5 |
-| **MumbleLang short-pass** | Structured prompts cut effective attention sequence **1.7–3.3×** (up to **~11×** attention-stage energy on compressible geometry) | [MUMBLELANG_SHORT_PASS.md](MUMBLELANG_SHORT_PASS.md) |
+| **Long-context stability** | O(N) Waller memory — **341×** less score-matrix footprint @ 131k tokens | [RESULTS_2026.md](RESULTS_2026.md) §5 |
+| **MumbleLang short-pass** | Structured prompts cut effective attention sequence **1.7–3.3×** | [MUMBLELANG_SHORT_PASS.md](MUMBLELANG_SHORT_PASS.md) |
 
-Raw attention kernel speed vs FlashAttention-2 fp16 at short seq is **not** the headline — Flash often wins that isolated row. The defensible claim is **full-layer joules**, **AUDIT determinism**, and **long-context headroom**.
+**Scope:** Morph/CGA wins require **compressible KV geometry** (RAG chunks, clustered keys). Flash often wins raw fp16 attn @ short seq — we do not claim that row. The defensible headlines are **morph longctx joules**, **full-layer geodesic energy**, **AUDIT determinism**, and **O(N) headroom**.
 
 ---
 
@@ -77,20 +78,32 @@ Contact for engine access, integration pilots, and press briefings:
 | [RESULTS_2026.md](RESULTS_2026.md) | Full tables: FlashAttention, vLLM, HF Transformers, RULER, nanoGPT |
 | [MUMBLELANG_SHORT_PASS.md](MUMBLELANG_SHORT_PASS.md) | Short-pass attention reduction — before/after, verification |
 | [run_bench.sh](run_bench.sh) | One-click public verification (safe, no private repos) |
-| [frozen/](frozen/) | Checksum-locked benchmark JSON snapshots |
+| [frozen/](frozen/) | Checksum-locked benchmark JSON snapshots (H100 + H200 morph) |
 | [X_THREAD_DRAFT.md](X_THREAD_DRAFT.md) | Ready-to-post announcement thread |
 
 ---
 
 ## Headline Numbers (2026-06-20 Snapshot)
 
+### Tier 1 — H200 morph longctx (compressible KV)
+
+| Metric | Value | Config |
+|--------|------:|--------|
+| Morph vs Flash attn joules | **16.8× lower** | `rag_tokenized` seq=16k, attn-only |
+| Morph vs Flash attn latency | **9.8× faster** | 0.65 ms vs 6.41 ms |
+| Full layer morph-auto vs off | **2.06× less joules** | P3+Flash, same fixture |
+| Sprint A vs PyTorch math | **329–438× less joules** | three fixtures, seq=16k |
+
+### Tier 2 — H100 conservative baseline (general KV)
+
 | Metric | Value | Config |
 |--------|------:|--------|
 | AUDIT decoder receipt (CUDA) | `0ae659948eabc3fa…d37ada` | H100, seq=1024 |
 | CPU production receipt | `e1980a6fa77252dc…37628` | `production_demo`, seq=8 |
 | Waller-eval median latency | **13.084 ms** | H100 Phase-0, 500×1024×1024×16 |
-| Geodesic full-layer median | **6.8 ms** | H100 TRADE, seq=1024 |
+| Geodesic full-layer median | **6.8 ms** | H100 TRADE, `hidden=1024 heads=16` |
 | J/token (TRADE vs PyTorch full) | **3.2× lower** | H100, GPT-2 dims, measured power |
+| GPT-2 H200 production path | **53 ms** / **6.07 mJ/token** | P3+Flash+morph-auto — see `frozen/h200_gpt2_trade_20260620.json` |
 | Attention energy @ 131k tokens | **2048×** vs naive O(N²) HBM model | `energy_sweep` |
 | Long-context memory @ 131k | **201 MB** vs **68.7 GB** naive scores | `scaling_sweep` |
 
