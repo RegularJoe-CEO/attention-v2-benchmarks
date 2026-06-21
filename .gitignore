@@ -1,0 +1,3 @@
+# X credentials — never commit
+scripts/x/credentials.env
+*.credentials.env
