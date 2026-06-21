@@ -45,12 +45,36 @@ try_browser_auth() {
 
 if ! try_browser_auth; then
   echo
-  echo "Browser extraction failed (common on first run — keychain prompt or not logged in)."
+  echo "Browser auto-extract failed (common — keychain prompt, wrong browser, or not logged in)."
   echo
-  echo "Manual cookie setup:"
-  echo "  1. Open https://x.com while logged in as @RegularJoe_Ceo"
-  echo "  2. DevTools (Cmd+Opt+I) → Application → Storage → Cookies → https://x.com"
-  echo "  3. Copy values for: auth_token  and  ct0"
+  echo "NOT the X Developer Portal (developer.x.com) — ignore that entirely."
+  echo "You need your BROWSER's built-in inspector while logged into x.com."
+  echo
+  echo "── Easiest path: try auto-extract again in Terminal.app ──"
+  echo "  1. Open Chrome and log into https://x.com as @RegularJoe_Ceo"
+  echo "  2. In Terminal.app (not Cursor), run:  bird whoami"
+  echo "  3. If macOS asks for Keychain access → click Allow"
+  echo "  4. If that prints your @handle, re-run this script and press 'y' to skip manual entry"
+  echo
+  echo "── Manual fallback (Chrome on Mac) ──"
+  echo "  1. In Chrome, go to https://x.com (logged in)"
+  echo "  2. Press Cmd+Option+I  (or menu: View → Developer → Developer Tools)"
+  echo "  3. Click the 'Application' tab (top bar; may be under the >> overflow)"
+  echo "  4. Left sidebar: Storage → Cookies → https://x.com"
+  echo "  5. In the table on the right, copy the Value column for:"
+  echo "       auth_token"
+  echo "       ct0"
+  echo
+  echo "── Manual fallback (Network tab — if you can't find Application) ──"
+  echo "  1. Chrome on https://x.com → Cmd+Option+I → Network tab"
+  echo "  2. Reload the page (Cmd+R)"
+  echo "  3. Click any request to 'x.com' or 'twitter.com'"
+  echo "  4. Headers → Request Headers → find the long 'cookie:' line"
+  echo "  5. Copy auth_token=... and ct0=... values from that line"
+  echo
+  echo "── Won't work on ──"
+  echo "  • X iPhone/Android app (no browser DevTools)"
+  echo "  • developer.x.com API portal (different thing entirely)"
   echo
 fi
 
