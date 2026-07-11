@@ -144,7 +144,7 @@ When MBL/1.0 feeds AttentionTransformer V2:
 | Technical debug | 1.8× | ~1.8× |
 | Long architecture | 3.3× | ~3.3× |
 
-Combined with Geodesic TRADE's baseline **3.2× J/token vs PyTorch** (see [RESULTS_2026.md](RESULTS_2026.md) §2), a founder-scale prompt can approach **~10× total J/token** vs unfused HF eager — run yourself to confirm on your tokenizer.
+Combined with Geodesic TRADE's baseline **3.2× J/token vs PyTorch** (see [RESULTS.md](RESULTS.md) §8), a founder-scale prompt can approach **~10× total J/token** vs unfused HF eager — run yourself to confirm on your tokenizer.
 
 ---
 

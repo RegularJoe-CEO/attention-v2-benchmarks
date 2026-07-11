@@ -27,21 +27,13 @@ jobs:
       - name: Run public verification harness
         run: ./run_bench.sh
 
-      - name: Energy model only
-        run: ./run_bench.sh --energy-only
-
-      - name: MumbleLang short-pass only
-        run: ./run_bench.sh --mumble
-
-      - name: Verify frozen checksums
-        run: ./run_bench.sh --verify-checksums
-
-      - name: Confirm RESULTS_2026.md contains headline tables
+      - name: Confirm RESULTS.md + suite
         run: |
-          grep -q "FlashAttention-2" RESULTS_2026.md
-          grep -q "vLLM" RESULTS_2026.md
-          grep -q "RULER" RESULTS_2026.md
-          grep -q "nanoGPT" RESULTS_2026.md
-          grep -q "0ae659948eabc3fa" RESULTS_2026.md
-          grep -q "e1980a6fa77252dc" RESULTS_2026.md
-          echo "RESULTS_2026.md structure OK"
+          grep -q "TRADE CUDA" RESULTS.md
+          grep -q "WNSM free-ride" RESULTS.md
+          grep -q "Long-context" RESULTS.md
+          grep -q "0ae659948eabc3fa" RESULTS.md
+          test -f suite/manifest.json
+          test -f frozen/h100_trade_cuda_20260711.json
+          test -f frozen/h100_longctx_scaling_20260711.json
+          echo "RESULTS.md + suite OK"

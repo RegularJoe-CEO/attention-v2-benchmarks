@@ -1,127 +1,83 @@
-# AttentionTransformer V2 — Public Benchmark Hub
+# AttentionTransformer V2 — Benchmarks
 
-**AttentionTransformer V2 · MumbleLang · Geodesic TRADE Engine**
+Public **results**, **frozen artifacts**, and a **verification harness** for AttentionTransformer V2 / Geodesic TRADE / WNSM.
 
-Independent verification artifacts for energy efficiency, deterministic receipts, long-context stability, and MumbleLang short-pass attention reduction.
+Implementation source is proprietary. This repo is what outsiders and evaluators should re-check.
 
 | | |
 |---|---|
 | **Maintainer** | Eric Waller — [luxiedge.com](https://luxiedge.com) · [@RegularJoe_Ceo](https://x.com/RegularJoe_Ceo) |
-| **Snapshot** | 2026-06-20 |
-| **Repo** | [github.com/RegularJoe-CEO/attention-v2-benchmarks](https://github.com/RegularJoe-CEO/attention-v2-benchmarks) |
-| **Related (public)** | [MumbleLang](https://github.com/RegularJoe-CEO/MumbleLang) |
+| **Snapshot** | 2026-07-11 (H100 suite) + 2026-06 (H200 morph / legacy) |
+| **Related** | [MumbleLang](https://github.com/RegularJoe-CEO/MumbleLang) · [LuxiDemo evidence](https://github.com/RegularJoe-CEO/LuxiDemo/tree/main/evidence) |
 
 ---
 
-## Where This Stack Wins (Verified, Conservative)
-
-This is not a claim to beat every framework on every metric. Documented, reproducible wins concentrate on five axes — **strongest first**:
-
-| Axis | Demonstrated advantage | Evidence |
-|------|------------------------|----------|
-| **Kernel morph + CGA (compressible KV)** | **16.8× less joules**, **9.8× faster** vs Flash attn @ seq=16k `rag_tokenized` (H200); full layer **2.06×** morph-auto vs morph-off | [RESULTS_2026.md](RESULTS_2026.md) §11, `frozen/h200_morph_rag_tokenized_20260620.json` |
-| **Sprint A longctx (attn-only)** | **329–438× less joules** vs PyTorch SDPA-math on three compressible fixtures @ seq=16k | [RESULTS_2026.md](RESULTS_2026.md) §11b, `frozen/h200_sprint_a_longctx_20260620.json` |
-| **Energy (J/token, general KV)** | Geodesic fused layer **3.2×** less measured GPU energy than unfused PyTorch full-layer @ GPT-2 shapes (H100) | [RESULTS_2026.md](RESULTS_2026.md) §2 |
-| **Determinism** | Bit-exact SHA-256 receipts across CPU/CUDA AUDIT paths; `max_diff 0.00e0` | [RESULTS_2026.md](RESULTS_2026.md) §4 |
-| **Long-context stability** | O(N) Waller memory — **341×** less score-matrix footprint @ 131k tokens | [RESULTS_2026.md](RESULTS_2026.md) §5 |
-| **MumbleLang short-pass** | Structured prompts cut effective attention sequence **1.7–3.3×** | [MUMBLELANG_SHORT_PASS.md](MUMBLELANG_SHORT_PASS.md) |
-
-**Scope:** Morph/CGA wins require **compressible KV geometry** (RAG chunks, clustered keys). Flash often wins raw fp16 attn @ short seq — we do not claim that row. The defensible headlines are **morph longctx joules**, **full-layer geodesic energy**, **AUDIT determinism**, and **O(N) headroom**.
-
----
-
-## Quick Verify (Public — No Proprietary Code)
-
-Anyone can run the public verification harness in under 60 seconds:
+## Quick verify (no engine)
 
 ```bash
 git clone https://github.com/RegularJoe-CEO/attention-v2-benchmarks.git
 cd attention-v2-benchmarks
-chmod +x run_bench.sh
 ./run_bench.sh
 ```
 
-This checks:
-
-1. Frozen benchmark artifact checksums (H100 / Mac snapshots)
-2. HBM energy model math (`20 pJ/byte` — matches engine `EnergyReport`)
-3. MumbleLang short-pass compression ratios on bundled examples
-4. Published SHA-256 receipt constants
-
-**Pass criteria:** exit code `0`, all `PASS` lines green.
+Checks frozen SHA-256, energy-model ratios, MumbleLang short-pass floors, and published claim bands from `frozen/*.json`.
 
 ---
 
-## Full Engine Reproduction (Licensed Access)
+## Suite map
 
-Core AttentionTransformer V2, Geodesic CUDA kernels, and WNSM control plane are **proprietary**. This repo publishes **results + verification**, not implementation source.
+Machine-readable catalog: [`suite/manifest.json`](suite/manifest.json)
 
-| Platform | Command (requires engine access) |
-|----------|----------------------------------|
-| **Mac / CPU** | `bash scripts/cpu_full_test.sh` inside licensed engine tree |
-| **RunPod H100** | `source scripts/pod_env.sh && bash scripts/runpod_quant_gate.sh` |
-| **Joules/token** | `bash scripts/benchmark_joules_pod.sh --profile gpt2` |
-| **Flash compare** | `bash scripts/compare_flash_pod.sh 200 1024 1024 16` |
+| ID | Axis | Device | Frozen |
+|----|------|--------|--------|
+| `h100_trade_cuda_stack` | 12L stack J/token | H100 | `frozen/h100_trade_cuda_20260711.json` |
+| `h100_stack12_h2h` | TRADE vs PyTorch Flash | H100 | `frozen/h100_stack12_h2h_20260711.json` |
+| `h100_baseline_vs_geo` | Layer + morph/mesh wedges | H100 | `frozen/h100_baseline_vs_geo_20260711.json` |
+| `h100_wnsm_free_ride` | Free-ride tax under load | H100 | `frozen/h100_wnsm_free_ride_20260711.json` |
+| `h100_longctx_scaling` | O(N) vs O(N²) + CUDA 32k | H100 | `frozen/h100_longctx_scaling_20260711.json` |
+| `h100_serve_sustain` | 30m continuous batch | H100 host | `frozen/h100_serve_sustain_20260711.json` |
+| `h200_morph_rag` | Morph vs Flash 16k | H200 | `frozen/h200_morph_rag_tokenized_20260620.json` |
+| `h200_sprint_a` | Sprint A vs SDPA-math | H200 | `frozen/h200_sprint_a_longctx_20260620.json` |
+| `cpu_receipts` | Bit-exact AUDIT | CPU | `frozen/cpu_receipts_20260620.json` |
+| `mumblelang_short_pass` | Prompt compression | public | [MUMBLELANG_SHORT_PASS.md](MUMBLELANG_SHORT_PASS.md) |
 
-Contact for engine access, integration pilots, and press briefings:
-
-- **Web:** [luxiedge.com](https://luxiedge.com)
-- **X:** [@RegularJoe_Ceo](https://x.com/RegularJoe_Ceo)
-- **Subject line:** `Attention V2 benchmark verification`
-
----
-
-## Repository Map
-
-| File | Purpose |
-|------|---------|
-| [RESULTS_2026.md](RESULTS_2026.md) | Full tables: FlashAttention, vLLM, HF Transformers, RULER, nanoGPT |
-| [MUMBLELANG_SHORT_PASS.md](MUMBLELANG_SHORT_PASS.md) | Short-pass attention reduction — before/after, verification |
-| [run_bench.sh](run_bench.sh) | One-click public verification (safe, no private repos) |
-| [frozen/](frozen/) | Checksum-locked benchmark JSON snapshots (H100 + H200 morph) |
-| [X_THREAD_DRAFT.md](X_THREAD_DRAFT.md) | Ready-to-post announcement thread |
+Tables and honest scope: **[RESULTS.md](RESULTS.md)**
 
 ---
 
-## Headline Numbers (2026-06-20 Snapshot)
+## Headline numbers (conservative)
 
-### Tier 1 — H200 morph longctx (compressible KV)
+| Claim | Number | Where it holds |
+|-------|-------:|----------------|
+| Prefill / decode stack J/tok (TRADE 12L) | **0.0131 / 0.0077** | H100 device-resident residual path |
+| WNSM free-ride overhead | **~1.01×** | 1L + 12L under load |
+| Memory reduction @ 32k / 131k | **256× / 1024×** | Waller state vs dense scores |
+| Morph vs Flash joules (compressible KV) | **16.8×** | H200 `rag_tokenized` seq=16k |
+| 12L short-seq thr/J vs Flash | **Flash wins ~19×** | Same-shape H2H — published honestly |
 
-| Metric | Value | Config |
-|--------|------:|--------|
-| Morph vs Flash attn joules | **16.8× lower** | `rag_tokenized` seq=16k, attn-only |
-| Morph vs Flash attn latency | **9.8× faster** | 0.65 ms vs 6.41 ms |
-| Full layer morph-auto vs off | **2.06× less joules** | P3+Flash, same fixture |
-| Sprint A vs PyTorch math | **329–438× less joules** | three fixtures, seq=16k |
+---
 
-### Tier 2 — H100 conservative baseline (general KV)
+## Layout
 
-| Metric | Value | Config |
-|--------|------:|--------|
-| AUDIT decoder receipt (CUDA) | `0ae659948eabc3fa…d37ada` | H100, seq=1024 |
-| CPU production receipt | `e1980a6fa77252dc…37628` | `production_demo`, seq=8 |
-| Waller-eval median latency | **13.084 ms** | H100 Phase-0, 500×1024×1024×16 |
-| Geodesic full-layer median | **6.8 ms** | H100 TRADE, `hidden=1024 heads=16` |
-| J/token (TRADE vs PyTorch full) | **3.2× lower** | H100, GPT-2 dims, measured power |
-| GPT-2 H200 production path | **53 ms** / **6.07 mJ/token** | P3+Flash+morph-auto — see `frozen/h200_gpt2_trade_20260620.json` |
-| Attention energy @ 131k tokens | **2048×** vs naive O(N²) HBM model | `energy_sweep` |
-| Long-context memory @ 131k | **201 MB** vs **68.7 GB** naive scores | `scaling_sweep` |
-
-Run `./run_bench.sh` to confirm artifact integrity. Run licensed engine commands to regenerate live numbers.
+```
+suite/manifest.json   # catalog
+frozen/               # checksum-locked JSON (+ mem ladder CSV)
+RESULTS.md            # tables
+run_bench.sh          # public verifier
+examples/             # MumbleLang fixtures
+MUMBLELANG_SHORT_PASS.md
+```
 
 ---
 
 ## Disclaimer
 
-- Benchmarks reflect **specific hardware snapshots** (NVIDIA H100 NVL, Apple Silicon M-series). Re-run gates after CUDA changes.
-- **FlashAttention** comparisons use same-pod methodology documented in engine `FLASH_BASELINE.md`. Do not compare `energy.csv` naive-O(N²) ratios directly to Flash.
-- **MumbleLang** compression uses character/token estimates in public harness; tokenizer-specific ratios vary by model.
-- Patents and licensing apply to Waller Operator, WNSM, Geodesic TRADE, and kernel-morph geometry. Contact for commercial terms.
-- Numbers in `frozen/` are integrity-checked snapshots — not a substitute for your own measured runs on your hardware.
-
----
+- Snapshots are host/date specific. Re-run after CUDA or kernel changes.
+- Board power ≠ wall-plug energy. Shapes are residual-MLP / GPT-2 width unless labeled full model.
+- Flash wins many short-seq thr rows; do not treat every table as a TRADE win.
+- Engine, kernels, and patents: proprietary — commercial terms via luxiedge.com.
 
 ## License
 
 Benchmark artifacts and verification scripts: **MIT**.  
-AttentionTransformer V2 engine, CUDA kernels, and Geodesic implementation: **proprietary** — contact for license.
+AttentionTransformer V2 / Geodesic / WNSM implementation: **proprietary**.

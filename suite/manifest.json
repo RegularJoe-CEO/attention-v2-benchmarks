@@ -1,0 +1,163 @@
+{
+  "schema": "luxiedge.benchmark_suite.v1",
+  "repo": "attention-v2-benchmarks",
+  "updated": "2026-07-11",
+  "hardware": ["NVIDIA H100 NVL", "NVIDIA H200", "Apple Silicon CPU"],
+  "public_verify": "./run_bench.sh",
+  "engine": "proprietary — results + verification only",
+  "benchmarks": [
+    {
+      "id": "h100_trade_cuda_stack",
+      "axis": "energy",
+      "title": "TRADE CUDA 12L device-resident prefill + resident-batch decode",
+      "device": "H100 NVL",
+      "date": "2026-07-11",
+      "frozen": "frozen/h100_trade_cuda_20260711.json",
+      "headline": {
+        "prefill_J_per_token": 0.01312,
+        "decode_J_per_token": 0.00773,
+        "job_1024prefill_64decode_J": 13.93
+      }
+    },
+    {
+      "id": "h100_stack12_h2h",
+      "axis": "throughput_energy_h2h",
+      "title": "12L stack H2H: TRADE vs PyTorch Flash pre-norm",
+      "device": "H100 NVL",
+      "date": "2026-07-11",
+      "frozen": "frozen/h100_stack12_h2h_20260711.json",
+      "headline": {
+        "trade_J_per_token": 0.01286,
+        "pytorch_flash_J_per_token": 0.000671,
+        "trade_over_pytorch_J_ratio": 19.17,
+        "note": ">1 means PyTorch Flash wins J/token and thr at this microbench"
+      }
+    },
+    {
+      "id": "h100_baseline_vs_geo",
+      "axis": "layer_microbench",
+      "title": "Single-layer geodesic vs PyTorch fp16 + morph/mesh wedges",
+      "device": "H100 NVL",
+      "date": "2026-07-11",
+      "frozen": "frozen/h100_baseline_vs_geo_20260711.json",
+      "headline": {
+        "geodesic_vs_pytorch_joules_ratio": 0.106,
+        "mesh_void_speedup_vs_waller_seq8192": 7.53,
+        "morph_full_layer_speedup_seq8192": 2.09
+      }
+    },
+    {
+      "id": "h100_wnsm_free_ride",
+      "axis": "audit_free_ride",
+      "title": "WNSM null free-ride under GPU load (1L + 12L)",
+      "device": "H100 NVL",
+      "date": "2026-07-11",
+      "frozen": "frozen/h100_wnsm_free_ride_20260711.json",
+      "headline": {
+        "overhead_on_over_off": 1.0095,
+        "stack12_free_ride_vs_side": 1.0104,
+        "stack12_out_drift": 0.0,
+        "payload_err_stack": 8.121e-7
+      }
+    },
+    {
+      "id": "h100_longctx_scaling",
+      "axis": "memory_scaling",
+      "title": "O(N) vs O(N²) memory + CUDA longctx @ 32k",
+      "device": "H100 NVL host",
+      "date": "2026-07-11",
+      "frozen": "frozen/h100_longctx_scaling_20260711.json",
+      "related": [
+        "frozen/h100_mem_ladder_20260711.csv",
+        "frozen/h100_cuda_longctx_32k_20260711.json"
+      ],
+      "headline": {
+        "mem_slope_waller": 1.0,
+        "mem_slope_standard": 2.0,
+        "reduction_x_at_32768": 256.0,
+        "reduction_x_at_131072": 1024.0,
+        "cuda_32k_median_W": 228.118,
+        "contact_bytes_avoided_32k": 34348204032
+      }
+    },
+    {
+      "id": "h100_serve_sustain",
+      "axis": "serving",
+      "title": "30m continuous-batch serve sustain (CPU path on H100 host)",
+      "device": "H100 NVL host",
+      "date": "2026-07-11",
+      "frozen": "frozen/h100_serve_sustain_20260711.json",
+      "headline": {
+        "wall_s": 1800,
+        "req_per_s": 377.6,
+        "ok_requests": 679684,
+        "audit_failures": 0,
+        "latency_p50_ms": 2.48
+      }
+    },
+    {
+      "id": "h100_gpt2_joules_legacy",
+      "axis": "energy",
+      "title": "H100 GPT-2 shape layer J/token (2026-06-01)",
+      "device": "H100 NVL",
+      "date": "2026-06-01",
+      "frozen": "frozen/h100_gpt2_joules_20260601.json",
+      "headline": {
+        "geodesic_vs_pytorch_joules_ratio": 3.23
+      }
+    },
+    {
+      "id": "h100_waller_eval",
+      "axis": "latency_audit",
+      "title": "Waller-eval Phase-0 constant latency",
+      "device": "H100 NVL",
+      "date": "2026-06-01",
+      "frozen": "frozen/h100_waller_eval_20260601.json"
+    },
+    {
+      "id": "h200_morph_rag",
+      "axis": "morph_longctx",
+      "title": "H200 morph vs Flash @ rag_tokenized seq=16k",
+      "device": "H200",
+      "date": "2026-06-20",
+      "frozen": "frozen/h200_morph_rag_tokenized_20260620.json",
+      "headline": {
+        "joules_ratio": 16.8,
+        "speed_ratio": 9.8
+      }
+    },
+    {
+      "id": "h200_sprint_a",
+      "axis": "morph_longctx",
+      "title": "H200 Sprint A longctx vs SDPA-math",
+      "device": "H200",
+      "date": "2026-06-20",
+      "frozen": "frozen/h200_sprint_a_longctx_20260620.json"
+    },
+    {
+      "id": "h200_gpt2_trade",
+      "axis": "energy",
+      "title": "H200 GPT-2 production TRADE path",
+      "device": "H200",
+      "date": "2026-06-20",
+      "frozen": "frozen/h200_gpt2_trade_20260620.json"
+    },
+    {
+      "id": "cpu_receipts",
+      "axis": "determinism",
+      "title": "CPU production + WNSM bit-exact receipts",
+      "device": "CPU",
+      "date": "2026-06-20",
+      "frozen": "frozen/cpu_receipts_20260620.json"
+    },
+    {
+      "id": "mumblelang_short_pass",
+      "axis": "prompt_compression",
+      "title": "MumbleLang short-pass attention reduction",
+      "device": "public harness",
+      "date": "2026-06-20",
+      "doc": "MUMBLELANG_SHORT_PASS.md",
+      "examples": "examples/"
+    }
+  ]
+}

@@ -7,6 +7,7 @@
 #   ./run_bench.sh --energy-only    # HBM energy model only
 #   ./run_bench.sh --mumble         # MumbleLang short-pass only
 #   ./run_bench.sh --verify-checksums
+#   ./run_bench.sh --h100           # H100 July suite only
 #
 set -euo pipefail
 
@@ -35,12 +36,11 @@ echo " No proprietary code required."
 echo "═══════════════════════════════════════════════════════════════════════"
 echo
 
-# ── Frozen snapshot constants (checksum-locked against RESULTS_2026.md) ──────
+# Frozen snapshot constants (checksum-locked against RESULTS.md)
 
 AUDIT_RECEIPT_CUDA="0ae659948eabc3fa1212b84d9a2006c707c28ba4209ce28410df676d38d37ada"
 PROD_RECEIPT_CPU="e1980a6fa77252dcab86e48aa7aa8ab2a6d3c5639789d0917e7efa1a7bb37628"
 
-# H100 waller-eval Phase-0 (2026-06-01)
 WALLER_EVAL_MEDIAN_MS="13.084"
 WALLER_EVAL_MEAN_MS="14.112"
 GEODESIC_LAYER_MS="6.8"
@@ -48,23 +48,6 @@ TRADE_J_PER_TOKEN="7.90e-4"
 PYTORCH_J_PER_TOKEN="2.55e-3"
 JOULES_RATIO_MIN="2.8"
 JOULES_RATIO_MAX="3.6"
-
-# Energy model @ 131072 (energy_sweep, 20 pJ/byte)
-ENERGY_131K_STD="33.0"
-ENERGY_131K_WALLER="0.0161"
-ENERGY_131K_RATIO="2048"
-
-# H200 morph longctx (2026-06-20 frozen snapshots)
-H200_MORPH_JOULES_RATIO_MIN="16.0"
-H200_MORPH_JOULES_RATIO_MAX="17.5"
-H200_MORPH_SPEED_RATIO_MIN="9.0"
-H200_MORPH_SPEED_RATIO_MAX="10.5"
-H200_FULL_LAYER_JOULES_RATIO_MIN="1.9"
-H200_FULL_LAYER_JOULES_RATIO_MAX="2.2"
-H200_SPRINT_A_JOULES_RATIO_MIN="320"
-H200_SPRINT_A_JOULES_RATIO_MAX="450"
-
-# ── Helpers ──────────────────────────────────────────────────────────────────
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || { fail "missing required command: $1"; return 1; }
@@ -90,8 +73,6 @@ verify_receipt_format() {
   fi
 }
 
-# ── 1. Receipt constants ─────────────────────────────────────────────────────
-
 verify_receipts() {
   echo "── Determinism receipts (published constants) ──"
   verify_receipt_format "CUDA AUDIT decoder" "$AUDIT_RECEIPT_CUDA"
@@ -104,8 +85,6 @@ verify_receipts() {
   echo
 }
 
-# ── 2. HBM energy model (reproduce energy_sweep math) ────────────────────────
-
 verify_energy_model() {
   echo "── HBM energy model (20 pJ/byte, matches engine EnergyReport) ──"
   need_cmd python3 || return 0
@@ -113,25 +92,18 @@ verify_energy_model() {
   python3 - <<'PY' || { fail "energy model computation"; return 1; }
 import sys
 
-J_PER_BYTE = 20e-12  # HBM literature constant used in engine
+J_PER_BYTE = 20e-12
 hidden, heads, layers = 64, 4, 3
 
 def std_attn_joules(seq):
-    # 2 * N^2 * 4 bytes * heads * layers (write + read score matrix)
     bytes_moved = 2 * (seq ** 2) * 4 * heads * layers
     return bytes_moved * J_PER_BYTE
 
 def waller_attn_joules(seq):
-    # 2 * N * hidden * 4 bytes * heads * layers (stream K/V)
     bytes_moved = 2 * seq * hidden * 4 * heads * layers
     return bytes_moved * J_PER_BYTE
 
-checks = [
-    (128,    2.0),
-    (8192,   128.0),
-    (131072, 2048.0),
-]
-
+checks = [(128, 2.0), (8192, 128.0), (131072, 2048.0)]
 ok = True
 for seq, expected_ratio in checks:
     std_j = std_attn_joules(seq)
@@ -143,7 +115,6 @@ for seq, expected_ratio in checks:
     else:
         print(f"OK   seq={seq}: std={std_j:.4e} J  waller={wal_j:.4e} J  ratio={ratio:.0f}x")
 
-# 131072 headline
 seq = 131072
 std_j = std_attn_joules(seq)
 wal_j = waller_attn_joules(seq)
@@ -153,8 +124,6 @@ PY
   pass "energy_sweep ratios reproduced (128→2048× doubling ladder)"
   echo
 }
-
-# ── 3. Joules/token ratio sanity ─────────────────────────────────────────────
 
 verify_joules_ratio() {
   echo "── Joules/token ratio sanity (H100 GPT-2 snapshot) ──"
@@ -168,11 +137,9 @@ lo, hi = float("${JOULES_RATIO_MIN}"), float("${JOULES_RATIO_MAX}")
 print(f"trade={trade:.4e}  pytorch={pt:.4e}  ratio={ratio:.2f}x")
 assert lo <= ratio <= hi, f"ratio {ratio} outside [{lo},{hi}]"
 PY
-  pass "J/token ratio ${JOULES_RATIO_MIN}–${JOULES_RATIO_MAX}× band confirmed (${PYTORCH_J_PER_TOKEN} / ${TRADE_J_PER_TOKEN})"
+  pass "J/token ratio ${JOULES_RATIO_MIN}–${JOULES_RATIO_MAX}× band confirmed"
   echo
 }
-
-# ── 4. Waller-eval latency band ──────────────────────────────────────────────
 
 verify_waller_eval() {
   echo "── Waller-eval constant latency band (~14 ms reference) ──"
@@ -187,11 +154,9 @@ assert 13.5 <= mean <= 15.0, f"mean {mean} outside waller-eval band"
 assert geo < median, "optimized geodesic must beat Phase-0 waller-eval"
 print(f"median={median} ms  mean={mean} ms  geodesic={geo} ms  speedup={median/geo:.2f}x vs waller-eval")
 PY
-  pass "waller-eval ~14 ms band + geodesic ${GEODESIC_LAYER_MS} ms < Phase-0 (expected optimization path)"
+  pass "waller-eval ~14 ms band + geodesic ${GEODESIC_LAYER_MS} ms < Phase-0"
   echo
 }
-
-# ── 5. MumbleLang short-pass ─────────────────────────────────────────────────
 
 verify_mumble_short_pass() {
   echo "── MumbleLang short-pass compression ──"
@@ -273,8 +238,6 @@ PY
   echo
 }
 
-# ── 6. H200 morph frozen JSON constants ──────────────────────────────────────
-
 verify_h200_morph() {
   echo "── H200 morph longctx frozen constants ──"
   need_cmd python3 || return 0
@@ -306,7 +269,71 @@ PY
   echo
 }
 
-# ── 7. Frozen artifact checksums ─────────────────────────────────────────────
+verify_h100_july() {
+  echo "── H100 2026-07-11 suite (frozen claim bands) ──"
+  need_cmd python3 || return 0
+
+  ROOT="${ROOT}" python3 - <<'PY' || { fail "H100 July frozen JSON"; return 1; }
+import json
+import os
+from pathlib import Path
+
+root = Path(os.environ["ROOT"])
+
+trade = json.loads((root / "frozen/h100_trade_cuda_20260711.json").read_text())
+assert 0.012 <= trade["j_per_prefill_token"] <= 0.014
+assert 0.007 <= trade["j_per_decode_token"] <= 0.009
+print(f"OK   TRADE prefill={trade['j_per_prefill_token']:.5f} decode={trade['j_per_decode_token']:.5f} J/tok")
+
+h2h = json.loads((root / "frozen/h100_stack12_h2h_20260711.json").read_text())
+r = h2h["trade_over_pytorch_J_per_token_ratio"]
+assert 15 <= r <= 25, r
+print(f"OK   stack12 H2H TRADE/PT J ratio={r:.2f} (PT wins thr at this shape)")
+
+base = json.loads((root / "frozen/h100_baseline_vs_geo_20260711.json").read_text())
+assert base["geodesic_vs_pytorch_joules_ratio"] < 1.0
+assert base["E_mesh_void_attn_wedge_seq8192"]["speedup_vs_waller"] > 5.0
+print(f"OK   baseline mesh wedge speedup={base['E_mesh_void_attn_wedge_seq8192']['speedup_vs_waller']:.2f}x")
+
+wnsm = json.loads((root / "frozen/h100_wnsm_free_ride_20260711.json").read_text())
+assert 1.0 <= wnsm["overhead_on_over_off"] <= 1.05
+stack = wnsm["results"]["stack12"]["bench"]
+assert stack["out_drift"] == 0.0
+assert 1.0 <= stack["free_ride_vs_side"] <= 1.05
+print(f"OK   WNSM free-ride overhead={wnsm['overhead_on_over_off']:.4f} stack out_drift={stack['out_drift']}")
+
+lc = json.loads((root / "frozen/h100_longctx_scaling_20260711.json").read_text())
+assert abs(lc["npow"]["mem_slope_waller"] - 1.0) < 0.02
+assert abs(lc["npow"]["mem_slope_standard"] - 2.0) < 0.02
+assert lc["reduction_highlights"]["at_32768"] == 256.0
+assert lc["reduction_highlights"]["at_131072"] == 1024.0
+print(f"OK   longctx mem red@32k={lc['reduction_highlights']['at_32768']}x @131k={lc['reduction_highlights']['at_131072']}x")
+
+serve = json.loads((root / "frozen/h100_serve_sustain_20260711.json").read_text())
+assert serve["metrics_excerpt"]["audit_failures"] == 0
+assert serve["workload"]["req_per_s"] > 100
+print(f"OK   serve sustain req/s={serve['workload']['req_per_s']:.1f} audit_failures=0")
+
+ladder = (root / "frozen/h100_mem_ladder_20260711.csv").read_text().strip().splitlines()
+assert ladder[0].startswith("seq,")
+rows = [ln.split(",") for ln in ladder[1:]]
+assert float(rows[-1][3]) == 1024.0
+print(f"OK   mem ladder rows={len(rows)} final reduction={rows[-1][3]}x")
+
+man = json.loads((root / "suite/manifest.json").read_text())
+missing = []
+for b in man["benchmarks"]:
+    if "frozen" in b and not (root / b["frozen"]).is_file():
+        missing.append(b["frozen"])
+    for rel in b.get("related", []):
+        if not (root / rel).is_file():
+            missing.append(rel)
+assert not missing, f"manifest missing files: {missing}"
+print(f"OK   suite/manifest.json ({len(man['benchmarks'])} benches) paths resolve")
+PY
+  pass "H100 2026-07-11 suite claim bands + suite manifest"
+  echo
+}
 
 verify_checksums() {
   echo "── Frozen artifact integrity ──"
@@ -318,18 +345,13 @@ verify_checksums() {
       fail "frozen/SHA256SUMS mismatch — run: (cd frozen && shasum -a 256 -c SHA256SUMS)"
     fi
   else
-    warn "frozen/SHA256SUMS not found — generate after adding frozen/*.json"
-    info "Expected files: frozen/h100_gpt2_joules_20260601.json"
-    info "                  frozen/h100_waller_eval_20260601.json"
-    info "                  frozen/h200_morph_rag_tokenized_20260620.json"
-    info "                  frozen/h200_sprint_a_longctx_20260620.json"
-    info "                  frozen/h200_gpt2_trade_20260620.json"
-    info "                  frozen/cpu_receipts_20260620.json"
+    warn "frozen/SHA256SUMS not found"
   fi
 
   for f in \
-    "${ROOT}/RESULTS_2026.md" \
+    "${ROOT}/RESULTS.md" \
     "${ROOT}/README.md" \
+    "${ROOT}/suite/manifest.json" \
     "${ROOT}/MUMBLELANG_SHORT_PASS.md"; do
     if [[ -f "$f" ]]; then
       pass "present: $(basename "$f")"
@@ -339,8 +361,6 @@ verify_checksums() {
   done
   echo
 }
-
-# ── 8. Optional live MumbleLang repo check ───────────────────────────────────
 
 verify_mumble_repo() {
   echo "── Optional: MumbleLang public repo ──"
@@ -356,8 +376,6 @@ verify_mumble_repo() {
   echo
 }
 
-# ── Dispatch ─────────────────────────────────────────────────────────────────
-
 case "$MODE" in
   --energy-only)
     verify_energy_model
@@ -371,18 +389,23 @@ case "$MODE" in
   --receipts)
     verify_receipts
     ;;
+  --h100)
+    verify_h100_july
+    verify_checksums
+    ;;
   all|--all|"")
     verify_receipts
     verify_energy_model
     verify_joules_ratio
     verify_waller_eval
     verify_h200_morph
+    verify_h100_july
     verify_mumble_short_pass
     verify_checksums
     verify_mumble_repo
     ;;
   -h|--help)
-    sed -n '2,10p' "$0" | tr -d '#'
+    sed -n '2,12p' "$0" | tr -d '#'
     exit 0
     ;;
   *)
@@ -395,8 +418,7 @@ echo " Summary: ${PASS} passed, ${FAIL} failed, ${WARN} warnings"
 if [[ $FAIL -eq 0 ]]; then
   echo -e " ${GRN}PUBLIC VERIFICATION: PASS${NC}"
   echo
-  echo " For live H100/H200/Mac numbers, contact luxiedge.com for engine access."
-  echo " Full tables: RESULTS_2026.md"
+  echo " Full tables: RESULTS.md · Catalog: suite/manifest.json"
   exit 0
 else
   echo -e " ${RED}PUBLIC VERIFICATION: FAIL${NC}"
